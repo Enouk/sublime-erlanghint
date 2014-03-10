@@ -1,4 +1,6 @@
-import sublime, sublime_plugin, subprocess, re
+import sublime, sublime_plugin, subprocess, re, os
+
+ERLHINT_PLUGIN_FOLDER = os.path.dirname(os.path.realpath(__file__))
 
 class ErlangHintEventListener(sublime_plugin.EventListener):  
     @staticmethod
@@ -10,13 +12,15 @@ class ErlangHintEventListener(sublime_plugin.EventListener):
 class ErlangHintCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         filename = self.view.file_name()
+        basename = os.path.basename(filename)
         if ".erl" not in filename:
             print("No erl file skipping")
             return
             
         include_dir = "../include"
         out_dir = "../ebin"
-        cmd = ["erlc", "-I", include_dir, filename]
+        outfile = ERLHINT_PLUGIN_FOLDER + "/hintedfile.erl"
+        cmd = ["erlc", "-I", include_dir, "-o", outfile, filename]
         out = self.exec_cmd(cmd)
 
         # p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
@@ -120,6 +124,7 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         return List
 
     def exec_cmd(self, cmd):
+        print(cmd)
         p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True)
         (out, stderr) = p.communicate()
         print(out, stderr)
