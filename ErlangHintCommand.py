@@ -25,6 +25,7 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         poutput = self.process_output(out)
         (warnings, errors) = self.create_regions(poutput)
         self.highlight_file(warnings, errors)
+        self.print_status(warnings, errors)
 
     def create_regions(self, output):
         print(output)
@@ -45,7 +46,7 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
             print(textPoint)
             return [self.view.find(match.group(1), textPoint)]
         
-        match = re.search("function ([a-z]+)", msg)
+        match = re.search("function ([a-z_]+)", msg)
         if match:
             print(match.group(1))
             print(textPoint)
@@ -58,27 +59,26 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         return [sublime.Region(textPoint, textPoint)]
 
     def create_error_region(self, warning):
-        regions = []
         [fileName, line, msg] = warning
         textPoint = self.view.text_point(int(line)-1, 0)
         match = re.search("syntax error before: ([\w]+)", msg)
         if match:
-            print(match.group(1))
-            print(textPoint)
+            regions = []
             regions.append(sublime.Region(textPoint-1, textPoint-1))
             regions.append(self.view.find(match.group(1), textPoint))
+            return regions
 
         match = re.search("unterminated string starting with \"([^[\"]{1})", msg)
         if match:
-            print(match.group(1))
-            print(textPoint)
-            regions.append(self.view.find(match.group(1), textPoint))            
+            return [self.view.find(match.group(1), textPoint)]
 
         match = re.search("[']([^']+)'", msg)
         if match:
-            print(match.group(1))
-            print(textPoint)
-            regions.append(self.view.find(match.group(1), textPoint)) 
+            return [self.view.find(match.group(1), textPoint)]
+
+        match = re.search("function ([\w]+)", msg)
+        if match:
+            return [self.view.find(match.group(1), textPoint)]
 
         return [sublime.Region(textPoint, textPoint)]
 
@@ -88,8 +88,8 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
 
         errors = [x for x in errors if x ]
         errors = [item for sublist in errors for item in sublist]
-        print(warnings)
-        print(errors)
+        print("Warnings", warnings)
+        print("Errors", errors)
         #region = self.view.find("BBBB", 0)
         #print(region)
         #self.view.add_regions("Erl", regions, "comment", 0)
@@ -107,6 +107,10 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         sublime.DRAW_NO_OUTLINE |
         sublime.DRAW_SQUIGGLY_UNDERLINE |
         sublime.HIDE_ON_MINIMAP)
+
+    def print_status(self, warnings, errors):
+        # TODO add status update here
+        pass
 
     def process_output(self, output):
         print("process_output: ")
