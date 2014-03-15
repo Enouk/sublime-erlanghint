@@ -1,31 +1,33 @@
-import sublime, sublime_plugin, subprocess, re, os
+import sublime, sublime_plugin, subprocess, re, os, tempfile
 
 ERLHINT_PLUGIN_FOLDER = os.path.dirname(os.path.realpath(__file__))
+SETTINGS_FILE = "erlanghint.sublime-settings"
 
-class ErlangHintEventListener(sublime_plugin.EventListener):  
+class ErlangHintEventListener(sublime_plugin.EventListener):
     @staticmethod
     def on_post_save(view): 
         if (view.file_name().endswith(".erl")):
-            print(view.file_name(), "Erlang file saved performing hint")
             view.window().run_command("erlang_hint")
 
 class ErlangHintCommand(sublime_plugin.TextCommand):
     def run(self, edit):
         filename = self.view.file_name()
-        basename = os.path.basename(filename)
+        filedir = os.path.dirname(filename)
         if ".erl" not in filename:
             print("No erl file skipping")
             return
-            
-        include_dir = "../include"
-        out_dir = "../ebin"
-        outfile = ERLHINT_PLUGIN_FOLDER + "/hintedfile.erl"
-        cmd = ["erlc", "-I", include_dir, "-o", outfile, filename]
-        out = self.exec_cmd(cmd)
+           
+        # Set deps in ERL_LIBS
+        env = {}
+        env.update(os.environ)
+        deps = filedir + "/../../../deps" 
+        env['ERL_LIBS'] = deps
 
-        # p = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
-        # (out, stderr) = p.communicate()
-        #print(out, stderr)
+        include_dir = filedir + "/../include"
+        outdir = tempfile.gettempdir()
+        cmd = ["erlc", "-I", include_dir, "-o", outdir, filename]
+        out = self.exec_cmd(cmd, env)
+
         poutput = self.process_output(out)
         (warnings, errors) = self.create_regions(poutput)
         self.highlight_file(warnings, errors)
@@ -46,14 +48,10 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
 
         match = re.search("variable [']([^']+)'", msg)
         if match:
-            print(match.group(1))
-            print(textPoint)
             return [self.view.find(match.group(1), textPoint)]
         
         match = re.search("function ([a-z_]+)", msg)
         if match:
-            print(match.group(1))
-            print(textPoint)
             return [self.view.find(match.group(1), textPoint)]
         
         match = re.search("Warning: no clause will ever match", msg)
@@ -114,7 +112,10 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
 
     def print_status(self, warnings, errors):
         # TODO add status update here
-        pass
+        if len(warnings) == 0 and len(errors) == 0:
+            self.view.set_status("erlanghint", "")        
+        else:
+            self.view.set_status("erlanghint", "Warnings:{0} Error:{1}".format(len(warnings), len(errors)))
 
     def process_output(self, output):
         print("process_output: ")
@@ -123,9 +124,9 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         List = [ [x for x in l if x] for l in List]
         return List
 
-    def exec_cmd(self, cmd):
+    def exec_cmd(self, cmd, env):
         print(cmd)
-        p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True)
+        p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True, env=env)
         (out, stderr) = p.communicate()
         print(out, stderr)
         return out
