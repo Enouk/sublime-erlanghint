@@ -20,12 +20,13 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         # Set deps in ERL_LIBS
         env = {}
         env.update(os.environ)
-        deps = filedir + "/../../../deps" 
-        env['ERL_LIBS'] = deps
+        deps = filedir + "/../../../deps"
+        apps = filedir + "/../../../apps" 
+        env['ERL_LIBS'] = deps + ";" + apps
 
         include_dir = filedir + "/../include"
         outdir = tempfile.gettempdir()
-        cmd = ["erlc", "-I", include_dir, "-o", outdir, filename]
+        cmd = ["erlc", "-D", "TEST", "-I", include_dir, "-o", outdir, filename]
         out = self.exec_cmd(cmd, env)
 
         poutput = self.process_output(out)
