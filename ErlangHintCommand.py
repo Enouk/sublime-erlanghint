@@ -22,7 +22,9 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
         env.update(os.environ)
         deps = filedir + "/../../../deps"
         apps = filedir + "/../../../apps" 
-        env['ERL_LIBS'] = deps + ";" + apps
+        env['ERL_LIBS'] = deps + ":" + apps
+        #on mac default install is here so append to path
+        env['PATH'] += ":/usr/local/bin:/usr/bin"
 
         include_dir = filedir + "/../include"
         outdir = tempfile.gettempdir()
@@ -127,7 +129,8 @@ class ErlangHintCommand(sublime_plugin.TextCommand):
 
     def exec_cmd(self, cmd, env):
         print(cmd)
-        p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True, env=env)
+        print(env)
+        p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, env=env)
         (out, stderr) = p.communicate()
         print(out, stderr)
         return out
